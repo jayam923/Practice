@@ -1,0 +1,275 @@
+ Different copression Technique in Hive
+
+4mc	:	com.hadoop.compression.fourmc.FourMcCodec		---> Not supportedd in cloudera 5.8
+lzo	:	com.hadoop.compression.lzo.LzopCodec			---> Not supportedd in cloudera 5.8
+gzip	:	org.apache.hadoop.io.compress.GzipCodec
+snappy	:	org.apache.hadoop.io.compress.SnappyCodec
+bzip2	:	org.apache.hadoop.io.compress.BZip2Codec
+lz4	:	org.apache.hadoop.io.compress.Lz4Codec
+
+########################################################################################
+
+hive> set io.compression.codec;				----> To find already set compresssion codec 
+io.compression.codec is undefined
+
+hive> set io.compression.codec=org.apache.hadoop.io.compress.SnappyCodec;		----> To improve query performance & to decrease time for io intensive operation.
+
+#####################################################################################################
+
+To enable compression on file created in intermediate map tasks
+
+hive> set hive.exec.compress.intermediate;
+hive.exec.compress.intermediate=false
+
+hive> set hive.exec.compress.intermediate=true;
+
+hive> set hive.intermediate.compression.codec;
+hive.intermediate.compression.codec is undefined
+
+hive> set hive.intermediate.compression.codec=org.apache.hadoop.io.compress.SnappyCodec;
+
+hive> set hive.intermediate.compression.type;
+hive.intermediate.compression.type is undefined
+
+hive> set hive.intermediate.compression.type=BLOCK;
+
+#########################################################################################################
+
+Compression is not enabled on output file
+
+hive> set hive.exec.compress.output;
+hive.exec.compress.output=false
+
+hive> insert overwrite local directory '/home/cloudera/TableOrder' select * from orderText;
+Query ID = cloudera_20180826165050_26d91524-1503-4157-a17a-2e9e8dbcfa71
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1534953171827_0026, Tracking URL = http://quickstart.cloudera:8088/proxy/application_1534953171827_0026/
+Kill Command = /usr/lib/hadoop/bin/hadoop job  -kill job_1534953171827_0026
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2018-08-26 16:51:02,968 Stage-1 map = 0%,  reduce = 0%
+2018-08-26 16:51:18,530 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 7.21 sec
+MapReduce Total cumulative CPU time: 7 seconds 210 msec
+Ended Job = job_1534953171827_0026
+Copying data to local directory /home/cloudera/TableOrder
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 7.21 sec   HDFS Read: 3003027 HDFS Write: 2862178 SUCCESS
+Total MapReduce CPU Time Spent: 7 seconds 210 msec
+OK
+Time taken: 33.049 seconds
+
+
+hive> dfs -ls -h hdfs://quickstart.cloudera:8020/user/cloudera/ordersData;
+Found 2 items
+-rw-r--r--   1 cloudera cloudera          0 2018-08-24 22:30 hdfs://quickstart.cloudera:8020/user/cloudera/ordersData/_SUCCESS
+-rw-r--r--   1 cloudera cloudera      2.9 M 2018-08-24 22:30 hdfs://quickstart.cloudera:8020/user/cloudera/ordersData/part-m-00000
+
+hive> !ls -lh /home/cloudera/TableOrder;
+total 2.8M
+-rw-r--r-- 1 cloudera cloudera 2.8M Aug 26 16:51 000000_0
+
+############################################################################################################
+
+After enabling compression on output
+
+hive> set hive.exec.compress.output=true;
+
+hive> set mapreduce.output.fileoutputformat.compress;
+mapreduce.output.fileoutputformat.compress=false
+
+hive> set mapreduce.output.fileoutputformat.compress=true;
+
+hive> set mapreduce.output.fileoutputformat.compress.codec;					---> Default behaviour
+mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.DefaultCodec
+
+hive> set mapreduce.output.fileoutputformat.compress.codec=com.apache.hadoop.io.compression.GzipCodec;
+
+hive> set mapreduce.output.fileoutputformat.compress.codec;
+mapreduce.output.fileoutputformat.compress.codec=com.apache.hadoop.io.compression.GzipCodec
+
+hive> set mapreduce.output.fileoutputformat.compress.type;					----> Default behaviour
+mapreduce.output.fileoutputformat.compress.type=RECORD
+
+hive> set mapreduce.output.fileoutputformat.compress.type=BLOCK;
+
+hive> set mapreduce.output.fileoutputformat.compress.type;
+mapreduce.output.fileoutputformat.compress.type=BLOCK
+
+
+hive> insert overwrite directory '/user/cloudera/TableOrder' select * from orderText;
+Query ID = cloudera_20180826170707_e60cf041-375b-488c-8e39-1e7ff38e1e2a
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1534953171827_0028, Tracking URL = http://quickstart.cloudera:8088/proxy/application_1534953171827_0028/
+Kill Command = /usr/lib/hadoop/bin/hadoop job  -kill job_1534953171827_0028
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2018-08-26 17:08:06,773 Stage-1 map = 0%,  reduce = 0%
+2018-08-26 17:08:56,135 Stage-1 map = 100%,  reduce = 0%
+Ended Job = job_1534953171827_0028 with errors
+Error during job, obtaining debugging information...
+Job Tracking URL: http://quickstart.cloudera:8088/proxy/application_1534953171827_0028/
+Examining task ID: task_1534953171827_0028_m_000000 (and more) from job job_1534953171827_0028
+
+Task with the most failures(4): 
+-----
+Task ID:							----> Wrong compression codec specified.
+  task_1534953171827_0028_m_000000
+
+URL:
+  http://0.0.0.0:8088/taskdetails.jsp?jobid=job_1534953171827_0028&tipid=task_1534953171827_0028_m_000000
+-----
+Diagnostic Messages for this Task:
+Error: java.lang.RuntimeException: org.apache.hadoop.hive.ql.metadata.HiveException: Hive Runtime Error while processing row {"order_id":1,"order_date":"2013-07-25 00:00:00","order_custid":11599,"order_status":"CLOSED"}
+
+Caused by: org.apache.hadoop.hive.ql.metadata.HiveException: Hive Runtime Error while processing row {"order_id":1,"order_date":"2013-07-25 00:00:00","order_custid":11599,"order_status":"CLOSED"}
+
+Caused by: org.apache.hadoop.hive.ql.metadata.HiveException: java.lang.IllegalArgumentException: Compression codec com.apache.hadoop.io.compression.GzipCodec was not found.
+
+Caused by: java.lang.IllegalArgumentException: Compression codec com.apache.hadoop.io.compression.GzipCodec was not found.
+
+Caused by: java.lang.ClassNotFoundException: Class com.apache.hadoop.io.compression.GzipCodec not found
+
+FAILED: Execution Error, return code 2 from org.apache.hadoop.hive.ql.exec.mr.MapRedTask
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   HDFS Read: 0 HDFS Write: 0 FAIL
+Total MapReduce CPU Time Spent: 0 msec
+
+
+
+hive> set mapreduce.output.fileoutputformat.compress.codec=com.apache.hadoop.io.compress.GzipCodec;
+
+hive> insert overwrite directory '/user/cloudera/TableOrder' select * from orderText;
+Query ID = cloudera_20180826171515_9f379eec-12fa-4059-b64c-383054689a4f
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1534953171827_0030, Tracking URL = http://quickstart.cloudera:8088/proxy/application_1534953171827_0030/
+Kill Command = /usr/lib/hadoop/bin/hadoop job  -kill job_1534953171827_0030
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2018-08-26 17:15:28,245 Stage-1 map = 0%,  reduce = 0%
+2018-08-26 17:15:46,053 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 8.67 sec
+MapReduce Total cumulative CPU time: 8 seconds 670 msec
+Ended Job = job_1534953171827_0030
+Stage-3 is selected by condition resolver.
+Stage-2 is filtered out by condition resolver.
+Stage-4 is filtered out by condition resolver.
+Moving data to: hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/.hive-staging_hive_2018-08-26_17-15-13_111_1569998197675465844-1/-ext-10000
+Moving data to: /user/cloudera/TableOrder
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 8.67 sec   HDFS Read: 3002997 HDFS Write: 470126 SUCCESS
+Total MapReduce CPU Time Spent: 8 seconds 670 msec
+OK
+Time taken: 34.286 seconds
+
+hive> dfs -ls -h hdfs://quickstart.cloudera:8020/user/cloudera/ordersData;
+Found 2 items
+-rw-r--r--   1 cloudera cloudera          0 2018-08-24 22:30 hdfs://quickstart.cloudera:8020/user/cloudera/ordersData/_SUCCESS
+-rw-r--r--   1 cloudera cloudera      2.9 M 2018-08-24 22:30 hdfs://quickstart.cloudera:8020/user/cloudera/ordersData/part-m-00000
+
+hive> dfs -ls -h hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder;
+Found 1 items
+-rwxr-xr-x   1 cloudera cloudera    459.1 K 2018-08-26 17:15 hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/000000_0.gz
+
+
+hive> set mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.BZip2Codec;
+
+hive> insert overwrite directory '/user/cloudera/TableOrder' select * from orderText;
+Query ID = cloudera_20180826171919_960c46fd-1a4e-49fd-b54a-9084c950a683
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1534953171827_0032, Tracking URL = http://quickstart.cloudera:8088/proxy/application_1534953171827_0032/
+Kill Command = /usr/lib/hadoop/bin/hadoop job  -kill job_1534953171827_0032
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2018-08-26 17:19:43,132 Stage-1 map = 0%,  reduce = 0%
+2018-08-26 17:20:02,318 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 9.08 sec
+MapReduce Total cumulative CPU time: 9 seconds 80 msec
+Ended Job = job_1534953171827_0032
+Stage-3 is selected by condition resolver.
+Stage-2 is filtered out by condition resolver.
+Stage-4 is filtered out by condition resolver.
+Moving data to: hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/.hive-staging_hive_2018-08-26_17-19-26_540_4985732318287788607-1/-ext-10000
+Moving data to: /user/cloudera/TableOrder
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 9.08 sec   HDFS Read: 3002997 HDFS Write: 387369 SUCCESS
+Total MapReduce CPU Time Spent: 9 seconds 80 msec
+OK
+Time taken: 37.026 seconds
+
+
+hive> dfs -ls -h hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder;
+Found 2 items
+-rwxr-xr-x   1 cloudera cloudera    378.3 K 2018-08-26 17:20 hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/000000_0.bz2
+-rwxr-xr-x   1 cloudera cloudera    459.1 K 2018-08-26 17:15 hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/000000_0.gz
+
+
+hive> set mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.SnappyCodec;
+
+hive> insert overwrite directory '/user/cloudera/TableOrder' select * from orderText;
+Query ID = cloudera_20180826172121_98a1daa3-0881-4e07-84df-b18792e61221
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1534953171827_0033, Tracking URL = http://quickstart.cloudera:8088/proxy/application_1534953171827_0033/
+Kill Command = /usr/lib/hadoop/bin/hadoop job  -kill job_1534953171827_0033
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2018-08-26 17:21:48,537 Stage-1 map = 0%,  reduce = 0%
+2018-08-26 17:22:05,072 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 8.81 sec
+MapReduce Total cumulative CPU time: 8 seconds 810 msec
+Ended Job = job_1534953171827_0033
+Stage-3 is selected by condition resolver.
+Stage-2 is filtered out by condition resolver.
+Stage-4 is filtered out by condition resolver.
+Moving data to: hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/.hive-staging_hive_2018-08-26_17-21-31_975_1345183591206443-1/-ext-10000
+Moving data to: /user/cloudera/TableOrder
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 8.81 sec   HDFS Read: 3002991 HDFS Write: 867038 SUCCESS
+Total MapReduce CPU Time Spent: 8 seconds 810 msec
+OK
+Time taken: 35.429 seconds
+ 
+
+hive> dfs -ls -h hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder;
+Found 3 items
+-rwxr-xr-x   1 cloudera cloudera    378.3 K 2018-08-26 17:20 hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/000000_0.bz2
+-rwxr-xr-x   1 cloudera cloudera    459.1 K 2018-08-26 17:15 hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/000000_0.gz
+-rwxr-xr-x   1 cloudera cloudera    846.7 K 2018-08-26 17:22 hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/000000_0.snappy
+
+
+hive> set mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.Lz4Codec;
+
+hive> insert overwrite directory '/user/cloudera/TableOrder' select * from orderText;
+Query ID = cloudera_20180826172323_738ee509-6e66-4e24-bc52-d81d06de5f1e
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1534953171827_0034, Tracking URL = http://quickstart.cloudera:8088/proxy/application_1534953171827_0034/
+Kill Command = /usr/lib/hadoop/bin/hadoop job  -kill job_1534953171827_0034
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2018-08-26 17:23:38,504 Stage-1 map = 0%,  reduce = 0%
+2018-08-26 17:23:55,271 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 8.34 sec
+MapReduce Total cumulative CPU time: 8 seconds 340 msec
+Ended Job = job_1534953171827_0034
+Stage-3 is selected by condition resolver.
+Stage-2 is filtered out by condition resolver.
+Stage-4 is filtered out by condition resolver.
+Moving data to: hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/.hive-staging_hive_2018-08-26_17-23-23_398_7309730018973043756-1/-ext-10000
+Moving data to: /user/cloudera/TableOrder
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 8.34 sec   HDFS Read: 3002997 HDFS Write: 867961 SUCCESS
+Total MapReduce CPU Time Spent: 8 seconds 340 msec
+OK
+Time taken: 33.128 seconds
+
+
+hive> dfs -ls -h hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder;
+Found 4 items
+-rwxr-xr-x   1 cloudera cloudera    378.3 K 2018-08-26 17:20 hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/000000_0.bz2
+-rwxr-xr-x   1 cloudera cloudera    459.1 K 2018-08-26 17:15 hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/000000_0.gz
+-rwxr-xr-x   1 cloudera cloudera    847.6 K 2018-08-26 17:23 hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/000000_0.lz4
+-rwxr-xr-x   1 cloudera cloudera    846.7 K 2018-08-26 17:22 hdfs://quickstart.cloudera:8020/user/cloudera/TableOrder/000000_0.snappy
+
+
+
