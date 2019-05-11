@@ -1,0 +1,20 @@
+
+
+POC: Dynamic BLOB Approach
+
+Description:
+ Single pipeline to extract data dynamically from Azure Blob to UDL which is cost effective and increases productivity. 
+
+Responsibilities:
+
+Creating  a table in Sql database and inserting data corresponding to objects specified by user.
+creating of pipeline following Microsoft Design solution framework which extracts data from Blob to UDL.
+Deletion of source data form BLOB over succesfull extraction of data.
+Performed regorous testing on success and failure scenarios.
+Monitoring the pipelines.
+
+Environment: ADF, Azure Blob, ADLS,Azure SQL
+
+Unilever Data Ingestion Project is a CPG domain related to ingestion of data from several sources (SFTP, Oracle, SQL Server, SAP BW etc.,)
+ into Azure Data Lake store irrespective of shape (structured and unstructured) and volumes of data that would be used by businesses to 
+build Azure Big Data Analytics and adhoc reporting using Power BI and other tools
